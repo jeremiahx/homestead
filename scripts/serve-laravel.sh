@@ -9,7 +9,15 @@ if [ -n "$5" ]; then
    done
 fi
 
-block="server {
+
+block="upstream client1broadcasters {
+    ip_hash;
+    server 127.0.0.1:6001;
+}
+upstream client1services {
+    server 127.0.0.1:8001;
+}
+server {
     listen ${3:-80};
     listen ${4:-443} ssl http2;
     server_name $1;
@@ -30,6 +38,25 @@ block="server {
     error_log  /var/log/nginx/$1-error.log error;
 
     sendfile off;
+
+
+       location /api/broadcasts/v1 {
+            proxy_set_header Upgrade \$http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header Host \$host;
+            proxy_http_version 1.1;
+            proxy_pass http://client1broadcasters;
+        }
+
+        location /api/services/v1 {
+            proxy_set_header Upgrade \$http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header Host \$host;
+            proxy_http_version 1.1;
+            proxy_pass http://client1services;
+        }
 
     client_max_body_size 100m;
 
